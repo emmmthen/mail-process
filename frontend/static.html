@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>航空零件采购比价系统</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1, h2 {
+            color: #1890ff;
+        }
+        .section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #e8e8e8;
+            border-radius: 4px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+        }
+        th, td {
+            border: 1px solid #e8e8e8;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f0f0f0;
+        }
+        .form-group {
+            margin: 10px 0;
+        }
+        label {
+            display: inline-block;
+            width: 120px;
+        }
+        input, select {
+            padding: 6px;
+            width: 200px;
+        }
+        button {
+            background-color: #1890ff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #40a9ff;
+        }
+        .message {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .success {
+            background-color: #f6ffed;
+            border: 1px solid #b7eb8f;
+            color: #52c41a;
+        }
+        .error {
+            background-color: #fff2f0;
+            border: 1px solid #ffccc7;
+            color: #ff4d4f;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>航空零件采购比价系统</h1>
+        
+        <!-- 健康检查 -->
+        <div class="section">
+            <h2>系统状态</h2>
+            <button onclick="checkHealth()">检查系统状态</button>
+            <div id="health-status" class="message"></div>
+        </div>
+        
+        <!-- 创建报价 -->
+        <div class="section">
+            <h2>创建报价记录</h2>
+            <div class="form-group">
+                <label>件号:</label>
+                <input type="text" id="part-number" placeholder="例如: ABC123" required>
+            </div>
+            <div class="form-group">
+                <label>供应商:</label>
+                <input type="text" id="supplier" placeholder="供应商名称">
+            </div>
+            <div class="form-group">
+                <label>美金单价:</label>
+                <input type="number" id="usd-price" step="0.01" placeholder="0.00">
+            </div>
+            <div class="form-group">
+                <label>货币符号:</label>
+                <select id="currency">
+                    <option value="$">$ (USD)</option>
+                    <option value="￥">￥ (CNY)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>交货期:</label>
+                <input type="text" id="lead-time" placeholder="例如: 2 weeks">
+            </div>
+            <div class="form-group">
+                <label>MOQ:</label>
+                <input type="number" id="moq" placeholder="最小起订量">
+            </div>
+            <button onclick="createQuote()">创建报价</button>
+            <div id="create-message" class="message"></div>
+        </div>
+        
+        <!-- 报价列表 -->
+        <div class="section">
+            <h2>报价列表</h2>
+            <button onclick="getQuotes()">获取报价列表</button>
+            <div id="quotes-list">
+                <table id="quotes-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>件号</th>
+                            <th>供应商</th>
+                            <th>美金单价</th>
+                            <th>人民币单价</th>
+                            <th>货币</th>
+                            <th>交货期</th>
+                            <th>MOQ</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="quotes-body">
+                        <!-- 数据将通过 JS 动态填充 -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- 比价单 -->
+        <div class="section">
+            <h2>比价单</h2>
+            <div class="form-group">
+                <label>件号:</label>
+                <input type="text" id="compare-part-number" placeholder="输入件号进行比价">
+            </div>
+            <button onclick="getComparison()">查看比价</button>
+            <div id="comparison-result">
+                <!-- 比价结果将通过 JS 动态填充 -->
+            </div>
+        </div>
+        
+        <!-- 邮件导入 -->
+        <div class="section">
+            <h2>邮件导入</h2>
+            <p>上传邮件文件，系统会自动提取报价数据</p>
+            <div class="form-group">
+                <label>选择文件:</label>
+                <input type="file" id="email-file" accept=".eml,.msg,.txt,.html,.pdf" multiple>
+            </div>
+            <button onclick="importEmail()">导入邮件</button>
+            <div id="import-message" class="message"></div>
+        </div>
+        
+        <!-- 系统设置 -->
+        <div class="section">
+            <h2>汇率换算设置</h2>
+            <div class="form-group">
+                <label>汇率:</label>
+                <input type="number" id="exchange-rate" step="0.01" value="7.2">
+            </div>
+            <div class="form-group">
+                <label>附加费用:</label>
+                <input type="number" id="additional-fee" step="0.01" value="0.00">
+            </div>
+            <div class="form-group">
+                <label>服务费率:</label>
+                <input type="number" id="service-fee" step="0.001" value="0.0">
+            </div>
+            <button onclick="updateSettings()">保存设置</button>
+            <div id="settings-message" class="message"></div>
+        </div>
+    </div>
+    
+    <script>
+        const API_URL = 'http://localhost:8000';
+        
+        // 健康检查
+        async function checkHealth() {
+            try {
+                const response = await fetch(`${API_URL}/health`);
+                const data = await response.json();
+                document.getElementById('health-status').innerHTML = 
+                    `<div class="success">系统状态: ${data.status}</div>`;
+            } catch (error) {
+                document.getElementById('health-status').innerHTML = 
+                    `<div class="error">连接失败: ${error.message}</div>`;
+            }
+        }
+        
+        // 创建报价
+        async function createQuote() {
+            const partNumber = document.getElementById('part-number').value;
+            const supplier = document.getElementById('supplier').value;
+            const usdPrice = document.getElementById('usd-price').value;
+            const currency = document.getElementById('currency').value;
+            const leadTime = document.getElementById('lead-time').value;
+            const moq = document.getElementById('moq').value;
+            
+            if (!partNumber) {
+                document.getElementById('create-message').innerHTML = 
+                    `<div class="error">件号不能为空</div>`;
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_URL}/api/quotes/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        part_number: partNumber,
+                        supplier_name: supplier,
+                        usd_price: parseFloat(usdPrice) || null,
+                        currency_symbol: currency,
+                        lead_time: leadTime,
+                        moq: parseInt(moq) || null
+                    })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    document.getElementById('create-message').innerHTML = 
+                        `<div class="success">报价创建成功！ID: ${data.id}</div>`;
+                    // 清空表单
+                    document.getElementById('part-number').value = '';
+                    document.getElementById('supplier').value = '';
+                    document.getElementById('usd-price').value = '';
+                    document.getElementById('lead-time').value = '';
+                    document.getElementById('moq').value = '';
+                    // 刷新报价列表
+                    getQuotes();
+                } else {
+                    const error = await response.json();
+                    document.getElementById('create-message').innerHTML = 
+                        `<div class="error">创建失败: ${error.detail}</div>`;
+                }
+            } catch (error) {
+                document.getElementById('create-message').innerHTML = 
+                    `<div class="error">请求失败: ${error.message}</div>`;
+            }
+        }
+        
+        // 获取报价列表
+        async function getQuotes() {
+            try {
+                const response = await fetch(`${API_URL}/api/quotes/`);
+                const quotes = await response.json();
+                
+                // 确保表格存在
+                const quotesList = document.getElementById('quotes-list');
+                // 重置为原始表格结构
+                quotesList.innerHTML = `
+                    <table id="quotes-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>件号</th>
+                                <th>供应商</th>
+                                <th>美金单价</th>
+                                <th>人民币单价</th>
+                                <th>货币</th>
+                                <th>交货期</th>
+                                <th>MOQ</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="quotes-body">
+                            <!-- 数据将通过 JS 动态填充 -->
+                        </tbody>
+                    </table>
+                `;
+                
+                const tbody = document.getElementById('quotes-body');
+                tbody.innerHTML = '';
+                
+                quotes.forEach(quote => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${quote.id}</td>
+                        <td>${quote.part_number}</td>
+                        <td>${quote.supplier_name || '-'}</td>
+                        <td>${quote.usd_price ? `$${quote.usd_price.toFixed(2)}` : '-'}</td>
+                        <td>${quote.cny_price ? `￥${quote.cny_price.toFixed(2)}` : '-'}</td>
+                        <td>${quote.currency_symbol || '-'}</td>
+                        <td>${quote.lead_time || '-'}</td>
+                        <td>${quote.moq || '-'}</td>
+                        <td>
+                            <button onclick="deleteQuote(${quote.id})" style="background-color: #ff4d4f;">删除</button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            } catch (error) {
+                const quotesList = document.getElementById('quotes-list');
+                quotesList.innerHTML = 
+                    `<div class="error">获取失败: ${error.message}</div>`;
+            }
+        }
+        
+        // 删除报价
+        async function deleteQuote(id) {
+            if (confirm('确定要删除这个报价吗？')) {
+                try {
+                    const response = await fetch(`${API_URL}/api/quotes/${id}`, {
+                        method: 'DELETE'
+                    });
+                    if (response.ok) {
+                        getQuotes(); // 刷新列表
+                    } else {
+                        alert('删除失败');
+                    }
+                } catch (error) {
+                    alert('删除失败: ' + error.message);
+                }
+            }
+        }
+        
+        // 获取比价单
+        async function getComparison() {
+            const partNumber = document.getElementById('compare-part-number').value;
+            
+            if (!partNumber) {
+                document.getElementById('comparison-result').innerHTML = 
+                    `<div class="error">请输入件号</div>`;
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_URL}/api/quotes/comparison/${partNumber}`);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    let html = `<h3>件号: ${data.part_number}</h3>`;
+                    html += `<p>供应商数量: ${data.supplier_count}</p>`;
+                    if (data.min_cny_price) {
+                        html += `<p>最低人民币单价: <strong style="color: #ff4d4f;">￥${data.min_cny_price.toFixed(2)}</strong></p>`;
+                    }
+                    
+                    html += `<table style="margin-top: 10px;">
+                        <thead>
+                            <tr>
+                                <th>供应商</th>
+                                <th>美金单价</th>
+                                <th>人民币单价</th>
+                                <th>交货期</th>
+                                <th>MOQ</th>
+                            </tr>
+                        </thead>
+                        <tbody>`;
+                    
+                    data.quotes.forEach(quote => {
+                        const isLowest = quote.cny_price === data.min_cny_price;
+                        html += `<tr ${isLowest ? 'style="background-color: #fff2f0;"' : ''}>
+                            <td>${quote.supplier_name || '-'}</td>
+                            <td>${quote.usd_price ? `$${quote.usd_price.toFixed(2)}` : '-'}</td>
+                            <td ${isLowest ? 'style="font-weight: bold; color: #ff4d4f;"' : ''}>
+                                ${quote.cny_price ? `￥${quote.cny_price.toFixed(2)}` : '-'}
+                            </td>
+                            <td>${quote.lead_time || '-'}</td>
+                            <td>${quote.moq || '-'}</td>
+                        </tr>`;
+                    });
+                    
+                    html += `</tbody></table>`;
+                    document.getElementById('comparison-result').innerHTML = html;
+                } else {
+                    const error = await response.json();
+                    document.getElementById('comparison-result').innerHTML = 
+                        `<div class="error">${error.detail}</div>`;
+                }
+            } catch (error) {
+                document.getElementById('comparison-result').innerHTML = 
+                    `<div class="error">请求失败: ${error.message}</div>`;
+            }
+        }
+        
+        // 更新汇率设置
+        async function updateSettings() {
+            const exchangeRate = document.getElementById('exchange-rate').value;
+            const additionalFee = document.getElementById('additional-fee').value;
+            const serviceFee = document.getElementById('service-fee').value;
+            
+            try {
+                const response = await fetch(`${API_URL}/api/settings/exchange-rate`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        exchange_rate: parseFloat(exchangeRate),
+                        additional_fee: parseFloat(additionalFee),
+                        service_fee_rate: parseFloat(serviceFee)
+                    })
+                });
+                
+                if (response.ok) {
+                    document.getElementById('settings-message').innerHTML = 
+                        `<div class="success">设置保存成功！</div>`;
+                } else {
+                    const error = await response.json();
+                    document.getElementById('settings-message').innerHTML = 
+                        `<div class="error">保存失败: ${error.detail}</div>`;
+                }
+            } catch (error) {
+                document.getElementById('settings-message').innerHTML = 
+                    `<div class="error">请求失败: ${error.message}</div>`;
+            }
+        }
+        
+        // 邮件导入
+        async function importEmail() {
+            const fileInput = document.getElementById('email-file');
+            const files = fileInput.files;
+            
+            if (!files || files.length === 0) {
+                document.getElementById('import-message').innerHTML = 
+                    `<div class="error">请选择邮件文件</div>`;
+                return;
+            }
+            
+            document.getElementById('import-message').innerHTML = 
+                `<div class="success">正在处理 ${files.length} 个文件...</div>`;
+            
+            try {
+                for (let i = 0; i < files.length; i++) {
+                    const file = files[i];
+                    
+                    // 创建 FormData
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    formData.append('process_type', 'auto');
+                    
+                    const response = await fetch(`${API_URL}/api/emails/import`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    if (response.ok) {
+                        const result = await response.json();
+                        if (result.success) {
+                            document.getElementById('import-message').innerHTML += 
+                                `<div class="success">${file.name}: 成功提取 ${result.quotes_extracted} 条报价</div>`;
+                        } else {
+                            document.getElementById('import-message').innerHTML += 
+                                `<div class="error">${file.name}: ${result.message}</div>`;
+                        }
+                    } else {
+                        document.getElementById('import-message').innerHTML += 
+                            `<div class="error">${file.name}: 导入失败</div>`;
+                    }
+                }
+                
+                // 刷新报价列表
+                getQuotes();
+            } catch (error) {
+                document.getElementById('import-message').innerHTML = 
+                    `<div class="error">导入失败: ${error.message}</div>`;
+            }
+        }
+        
+        // 页面加载时检查系统状态
+        window.onload = function() {
+            checkHealth();
+            getQuotes();
+        };
+    </script>
+</body>
+</html>
