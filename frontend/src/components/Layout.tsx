@@ -20,9 +20,9 @@ const menuItems: MenuProps['items'] = [
     label: <Link to="/comparison">比价单</Link>,
   },
   {
-    key: '/import',
+    key: '/email-processing',
     icon: <ImportOutlined />,
-    label: <Link to="/import">邮件导入</Link>,
+    label: <Link to="/email-processing">邮件处理</Link>,
   },
   {
     key: '/settings',

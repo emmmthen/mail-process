@@ -38,9 +38,17 @@ export const getPriceComparison = async (partNumber: string): Promise<QuoteCompa
   return response.data
 }
 
-// 邮件导入 API
-export const importEmail = async (data: EmailImportRequest): Promise<EmailImportResponse> => {
-  const response = await api.post('/emails/import', data)
+// 邮件导入 API - 用于文件上传
+export const importEmail = async (file: File): Promise<EmailImportResponse> => {
+  const formData = new FormData()
+  formData.append('file', file)
+  formData.append('process_type', 'auto')
+  
+  const response = await api.post('/emails/import', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  })
   return response.data
 }
 

@@ -2,7 +2,7 @@ import { Routes, Route } from 'react-router-dom'
 import Layout from './components/Layout'
 import QuoteList from './pages/QuoteList'
 import QuoteComparison from './pages/QuoteComparison'
-import EmailImport from './pages/EmailImport'
+import EmailProcessing from './pages/EmailProcessing'
 import Settings from './pages/Settings'
 
 function App() {
@@ -12,7 +12,7 @@ function App() {
         <Route index element={<QuoteList />} />
         <Route path="comparison" element={<QuoteComparison />} />
         <Route path="comparison/:partNumber" element={<QuoteComparison />} />
-        <Route path="import" element={<EmailImport />} />
+        <Route path="email-processing" element={<EmailProcessing />} />
         <Route path="settings" element={<Settings />} />
       </Route>
     </Routes>

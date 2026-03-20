@@ -5,6 +5,11 @@ from app.schemas.email import EmailImportResponse
 from app.schemas.quote import QuoteCreate
 import re
 import os
+import logging
+
+# 配置日志
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 
 class EmailProcessor:
@@ -16,15 +21,25 @@ class EmailProcessor:
     
     async def process_email(self, email_path: str, process_type: str = "auto") -> EmailImportResponse:
         """处理单封邮件"""
+        logger.info(f"开始处理邮件：{email_path}")
+        logger.info(f"处理类型：{process_type}")
+        
         try:
             # 检测邮件类型并提取数据
+            logger.info("开始提取邮件中的报价数据")
             quotes_data = await self._extract_quotes_from_email(email_path, process_type)
+            logger.info(f"提取到 {len(quotes_data)} 条原始报价数据")
+            logger.info(f"原始报价数据：{quotes_data}")
             
             # 创建报价记录
             created_quotes = []
-            for quote_data in quotes_data:
+            for i, quote_data in enumerate(quotes_data):
+                logger.info(f"处理第 {i+1} 条报价数据")
+                logger.info(f"报价数据：{quote_data}")
+                
                 # 确保 quote_data 包含必要的字段
                 if not quote_data.get('usd_price'):
+                    logger.warning("跳过没有价格的报价")
                     continue  # 跳过没有价格的报价
                 
                 # 从备注中提取交货期和 MOQ
@@ -32,10 +47,17 @@ class EmailProcessor:
                 lead_time = quote_data.get('lead_time')
                 moq = quote_data.get('moq')
                 
+                logger.info(f"备注：{remarks}")
+                logger.info(f"交货期：{lead_time}")
+                logger.info(f"MOQ：{moq}")
+                
                 if not lead_time or not moq:
+                    logger.info("从备注中提取交货期和 MOQ")
                     lead_time, moq = self._extract_lead_time_and_moq_from_remarks(remarks)
+                    logger.info(f"提取结果 - 交货期：{lead_time}，MOQ：{moq}")
                 
                 # 转换为 QuoteCreate 对象
+                logger.info("创建 QuoteCreate 对象")
                 quote_create = QuoteCreate(
                     part_number=quote_data.get('part_number'),
                     supplier_name=quote_data.get('supplier_name'),
@@ -51,10 +73,15 @@ class EmailProcessor:
                     source_id=quote_data.get('source_id')
                 )
                 
+                logger.info(f"QuoteCreate 对象：{quote_create}")
+                
+                logger.info("保存报价到数据库")
                 quote = await self.quote_service.create_quote(quote_create)
+                logger.info(f"创建的报价：{quote}")
                 created_quotes.append(quote)
             
             # 安全地序列化报价对象
+            logger.info("序列化报价对象")
             quotes_serialized = []
             for quote in created_quotes:
                 quote_dict = {
@@ -73,7 +100,9 @@ class EmailProcessor:
                     "updated_at": quote.updated_at.isoformat() if quote.updated_at else None
                 }
                 quotes_serialized.append(quote_dict)
+                logger.info(f"序列化的报价：{quote_dict}")
             
+            logger.info(f"邮件处理完成，成功创建 {len(created_quotes)} 条报价")
             return EmailImportResponse(
                 success=True,
                 quotes_extracted=len(created_quotes),
@@ -81,6 +110,7 @@ class EmailProcessor:
                 quotes=quotes_serialized
             )
         except Exception as e:
+            logger.error(f"处理邮件时发生错误：{str(e)}")
             return EmailImportResponse(
                 success=False,
                 quotes_extracted=0,
@@ -109,37 +139,63 @@ class EmailProcessor:
     async def _extract_quotes_from_email(self, email_path: str, process_type: str) -> List[dict]:
         """从邮件中提取报价数据"""
         # 读取邮件内容
+        logger.info(f"读取邮件内容：{email_path}")
         content = self._read_email_content(email_path)
+        logger.info(f"邮件内容长度：{len(content)} 字符")
+        # 打印邮件内容的前1000字符（如果内容较长）
+        if len(content) > 1000:
+            logger.info(f"邮件内容预览：{content[:1000]}...")
+        else:
+            logger.info(f"邮件内容：{content}")
         
         # 检测是否为"暂无报价"
+        logger.info("检测是否为'暂无报价'邮件")
         if self._is_no_quote(content):
+            logger.info("邮件为'暂无报价'，返回空结果")
             return []
         
         # 根据类型选择提取器
         if process_type == "auto":
+            logger.info("自动检测邮件类型")
             process_type = self._detect_email_type(content)
+            logger.info(f"检测结果：{process_type}")
         
+        logger.info(f"使用 {process_type} 提取器提取数据")
         if process_type == "html":
-            return await self._extract_from_html(content)
+            result = await self._extract_from_html(content)
+            logger.info(f"HTML提取器结果：{result}")
+            return result
         elif process_type == "text":
-            return await self._extract_from_text(content)
+            result = await self._extract_from_text(content)
+            logger.info(f"文本提取器结果：{result}")
+            return result
         elif process_type == "pdf":
-            return await self._extract_from_pdf(email_path)
+            result = await self._extract_from_pdf(email_path)
+            logger.info(f"PDF提取器结果：{result}")
+            return result
         elif process_type == "image":
-            return await self._extract_from_image(email_path)
+            result = await self._extract_from_image(email_path)
+            logger.info(f"图片提取器结果：{result}")
+            return result
         else:
-            return await self._extract_from_text(content)
+            result = await self._extract_from_text(content)
+            logger.info(f"默认文本提取器结果：{result}")
+            return result
     
     def _read_email_content(self, email_path: str) -> str:
         """读取邮件内容"""
         import email
         import quopri
         
+        logger.info(f"读取邮件文件：{email_path}")
+        
         # 检查文件扩展名
         ext = os.path.splitext(email_path)[1].lower()
+        logger.info(f"文件扩展名：{ext}")
         
         if ext == '.eml':
             # 处理 .eml 文件
+            logger.info("处理 .eml 文件")
             with open(email_path, 'rb') as f:
                 msg = email.message_from_bytes(f.read())
             
@@ -150,38 +206,57 @@ class EmailProcessor:
                 content_type = part.get_content_type()
                 content_disposition = str(part.get('Content-Disposition', ''))
                 
+                logger.info(f"处理邮件部分：{content_type}, 处置：{content_disposition}")
+                
                 # 跳过附件
                 if 'attachment' in content_disposition:
+                    logger.info("跳过附件")
                     return
                 
                 # 处理文本内容
                 if content_type == 'text/plain':
                     charset = part.get_content_charset('utf-8')
+                    logger.info(f"处理纯文本内容，字符集：{charset}")
                     try:
-                        content.append(part.get_payload(decode=True).decode(charset))
-                    except:
+                        payload = part.get_payload(decode=True).decode(charset)
+                        logger.info(f"成功解码纯文本内容，长度：{len(payload)} 字符")
+                        content.append(payload)
+                    except Exception as e:
+                        logger.warning(f"解码纯文本内容失败：{e}，使用原始payload")
                         content.append(part.get_payload())
                 elif content_type == 'text/html':
                     charset = part.get_content_charset('utf-8')
+                    logger.info(f"处理HTML内容，字符集：{charset}")
                     try:
-                        content.append(part.get_payload(decode=True).decode(charset))
-                    except:
+                        payload = part.get_payload(decode=True).decode(charset)
+                        logger.info(f"成功解码HTML内容，长度：{len(payload)} 字符")
+                        content.append(payload)
+                    except Exception as e:
+                        logger.warning(f"解码HTML内容失败：{e}，使用原始payload")
                         content.append(part.get_payload())
                 elif part.is_multipart():
+                    logger.info("处理多部分内容")
                     for subpart in part.get_payload():
                         process_part(subpart)
             
             if msg.is_multipart():
+                logger.info("邮件是多部分内容")
                 for part in msg.get_payload():
                     process_part(part)
             else:
+                logger.info("邮件是单部分内容")
                 process_part(msg)
             
-            return '\n'.join(content)
+            result = '\n'.join(content)
+            logger.info(f"邮件内容提取完成，总长度：{len(result)} 字符")
+            return result
         else:
             # 处理其他格式文件
+            logger.info(f"处理 {ext} 文件")
             with open(email_path, 'r', encoding='utf-8', errors='ignore') as f:
-                return f.read()
+                content = f.read()
+                logger.info(f"文件内容读取完成，长度：{len(content)} 字符")
+                return content
     
     def _is_no_quote(self, content: str) -> bool:
         """检查是否为"暂无报价"邮件"""
