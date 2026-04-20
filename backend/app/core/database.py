@@ -1,7 +1,13 @@
+from pathlib import Path
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from app.core.config import settings
+
+# 确保 SQLite 数据库目录存在，避免启动时因路径缺失失败
+if settings.DATABASE_URL.startswith("sqlite:///./"):
+    db_path = Path(settings.DATABASE_URL.removeprefix("sqlite:///./"))
+    db_path.parent.mkdir(parents=True, exist_ok=True)
 
 # 创建数据库引擎
 engine = create_engine(

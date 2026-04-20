@@ -1,7 +1,7 @@
 import { Card, Form, InputNumber, Button, Space, message, Row, Col } from 'antd'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getExchangeRateSettings, updateExchangeRateSettings } from '../services/api'
-import { DollarOutlined, SettingOutlined } from '@ant-design/icons'
+import { DollarOutlined } from '@ant-design/icons'
 
 export default function Settings() {
   const [form] = Form.useForm()

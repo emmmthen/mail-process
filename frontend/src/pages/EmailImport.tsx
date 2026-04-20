@@ -6,7 +6,7 @@ import type { UploadProps } from 'antd'
 
 export default function EmailImport() {
   const importMutation = useMutation({
-    mutationFn: (filePath: string) => importEmail({ email_file_path: filePath }),
+    mutationFn: (file: File) => importEmail(file),
     onSuccess: (data) => {
       if (data.success) {
         message.success(data.message)
@@ -21,10 +21,7 @@ export default function EmailImport() {
     multiple: true,
     accept: '.eml,.msg,.txt,.html,.pdf',
     beforeUpload: (file) => {
-      // 这里需要实现文件上传到服务器的逻辑
-      // 目前简化处理，假设文件已经在服务器上
-      const filePath = `/uploads/${file.name}`
-      importMutation.mutate(filePath)
+      importMutation.mutate(file)
       return false
     },
   }

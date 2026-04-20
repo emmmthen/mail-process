@@ -1,4 +1,5 @@
 from pydantic import BaseModel, Field
+from datetime import datetime
 from typing import Optional
 
 
@@ -24,8 +25,8 @@ class SystemSettingsUpdate(BaseModel):
 class SystemSettingsResponse(SystemSettingsBase):
     """系统配置响应 Schema"""
     id: int
-    created_at: str
-    updated_at: str
+    created_at: datetime
+    updated_at: datetime
     
     class Config:
         from_attributes = True

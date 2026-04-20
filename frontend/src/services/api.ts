@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { Quote, QuoteComparison, EmailImportRequest, EmailImportResponse, ExchangeRateSettings } from '../types'
+import type { Quote, QuoteComparison, EmailImportResponse, ExchangeRateSettings } from '../types'
 
 const api = axios.create({
   baseURL: '/api',

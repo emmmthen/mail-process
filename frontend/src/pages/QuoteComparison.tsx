@@ -1,11 +1,9 @@
-import { Card, Table, Typography, Space, Tag, Button, Empty, Input, Alert } from 'antd'
+import { Card, Table, Space, Tag, Button, Empty, Input, Alert } from 'antd'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { getQuotes } from '../services/api'
 import { ArrowLeftOutlined, SearchOutlined } from '@ant-design/icons'
 import { useState } from 'react'
-
-const { Title } = Typography
 
 export default function QuoteComparison() {
   const { partNumber } = useParams<{ partNumber: string }>()
@@ -19,9 +17,12 @@ export default function QuoteComparison() {
   })
 
   // 找出最低价格
-  const minPrice = quotes 
-    ? Math.min(...quotes.filter(q => q.cny_price).map(q => q.cny_price))
-    : null
+  const cnyPrices = quotes
+    ? quotes
+        .map((quote) => quote.cny_price)
+        .filter((price): price is number => price !== undefined)
+    : []
+  const minPrice = cnyPrices.length > 0 ? Math.min(...cnyPrices) : null
 
   const columns = [
     {
@@ -39,7 +40,7 @@ export default function QuoteComparison() {
       title: '人民币单价',
       dataIndex: 'cny_price',
       key: 'cny_price',
-      render: (price: number, record: any) => {
+      render: (price: number) => {
         const isLowest = price === minPrice
         return (
           <span style={{ fontWeight: isLowest ? 'bold' : 'normal', color: isLowest ? '#ff4d4f' : 'inherit' }}>

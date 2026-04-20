@@ -1,5 +1,5 @@
-import { Card, Steps, Button, Space, Tabs, Table, Typography, Alert, message, Upload } from 'antd'
-import { useState, useEffect } from 'react'
+import { Card, Steps, Button, Space, Table, Typography, Alert, message, Upload } from 'antd'
+import { useState } from 'react'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { importEmail, getQuotes } from '../services/api'
 import type { UploadProps } from 'antd'
@@ -8,7 +8,6 @@ import type { Quote } from '../types'
 
 const { Title } = Typography
 const { Step } = Steps
-const { TabPane } = Tabs
 
 // 模拟文件上传组件
 const FileUploader = ({ onFilesUploaded }: { onFilesUploaded: (files: File[]) => void }) => {
@@ -16,7 +15,7 @@ const FileUploader = ({ onFilesUploaded }: { onFilesUploaded: (files: File[]) =>
     name: 'file',
     multiple: true,
     accept: '.eml,.msg,.txt,.html,.pdf',
-    beforeUpload: (file) => {
+    beforeUpload: () => {
       return false
     },
     onChange: (info) => {
@@ -96,10 +95,20 @@ const QuoteListSection = ({ quotes, onSelectPartNumber }: { quotes: Quote[], onS
 }
 
 // 比价单组件
-const ComparisonSection = ({ quotes }: { quotes: Quote[] }) => {
+const ComparisonSection = ({
+  quotes,
+  selectedPartNumber,
+}: {
+  quotes: Quote[]
+  selectedPartNumber: string
+}) => {
+  const visibleQuotes = selectedPartNumber
+    ? quotes.filter((quote) => quote.part_number === selectedPartNumber)
+    : quotes
+
   // 按件号分组
   const partNumberGroups: Record<string, Quote[]> = {}
-  quotes.forEach(quote => {
+  visibleQuotes.forEach(quote => {
     if (!partNumberGroups[quote.part_number]) {
       partNumberGroups[quote.part_number] = []
     }
@@ -210,7 +219,6 @@ const ComparisonSection = ({ quotes }: { quotes: Quote[] }) => {
 
 export default function EmailProcessing() {
   const [currentStep, setCurrentStep] = useState(0)
-  const [uploadedFiles, setUploadedFiles] = useState<File[]>([])
   const [selectedPartNumber, setSelectedPartNumber] = useState<string>('')
 
   // 获取报价列表
@@ -235,7 +243,6 @@ export default function EmailProcessing() {
 
   // 处理文件上传
   const handleFilesUploaded = (files: File[]) => {
-    setUploadedFiles(files)
     // 处理每个上传的文件
     files.forEach(file => {
       importMutation.mutate(file)
@@ -264,7 +271,7 @@ export default function EmailProcessing() {
     },
     {
       title: '比价单',
-      content: <ComparisonSection quotes={quotes} />,
+      content: <ComparisonSection quotes={quotes} selectedPartNumber={selectedPartNumber} />,
     },
   ]
 
