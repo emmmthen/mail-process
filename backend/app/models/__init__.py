@@ -1,3 +1,3 @@
-from app.models import quote, system_settings
+from app.models import email_feedback, quote, system_settings
 
-__all__ = ["quote", "system_settings"]
+__all__ = ["quote", "system_settings", "email_feedback"]

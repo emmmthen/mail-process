@@ -1,5 +1,15 @@
 import axios from 'axios'
-import type { Quote, QuoteComparison, EmailImportResponse, ExchangeRateSettings } from '../types'
+import type {
+  Quote,
+  QuoteComparison,
+  EmailImportResponse,
+  ExchangeRateSettings,
+  ReviewApproveRequest,
+  ReviewCorrectRequest,
+  ReviewDetail,
+  ReviewPendingItem,
+  ReviewRejectRequest,
+} from '../types'
 
 const api = axios.create({
   baseURL: '/api',
@@ -70,5 +80,31 @@ export const updateExchangeRateSettings = async (settings: ExchangeRateSettings)
 
 export const getAllSettings = async () => {
   const response = await api.get('/settings/')
+  return response.data
+}
+
+// 审核反馈 API
+export const getPendingReviews = async (): Promise<ReviewPendingItem[]> => {
+  const response = await api.get('/reviews/pending')
+  return response.data
+}
+
+export const getReviewDetail = async (extractionRunId: number): Promise<ReviewDetail> => {
+  const response = await api.get(`/reviews/${extractionRunId}`)
+  return response.data
+}
+
+export const approveReview = async (extractionRunId: number, data: ReviewApproveRequest) => {
+  const response = await api.post(`/reviews/${extractionRunId}/approve`, data)
+  return response.data
+}
+
+export const correctReview = async (extractionRunId: number, data: ReviewCorrectRequest) => {
+  const response = await api.post(`/reviews/${extractionRunId}/correct`, data)
+  return response.data
+}
+
+export const rejectReview = async (extractionRunId: number, data: ReviewRejectRequest) => {
+  const response = await api.post(`/reviews/${extractionRunId}/reject`, data)
   return response.data
 }

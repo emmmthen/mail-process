@@ -4,7 +4,8 @@ import {
   DashboardOutlined,
   ImportOutlined,
   SettingOutlined,
-  BarChartOutlined
+  BarChartOutlined,
+  SnippetsOutlined,
 } from '@ant-design/icons'
 import type { MenuProps } from 'antd'
 
@@ -23,6 +24,11 @@ const menuItems: MenuProps['items'] = [
     key: '/email-processing',
     icon: <ImportOutlined />,
     label: <Link to="/email-processing">邮件处理</Link>,
+  },
+  {
+    key: '/reviews',
+    icon: <SnippetsOutlined />,
+    label: <Link to="/reviews">审核队列</Link>,
   },
   {
     key: '/settings',

@@ -1,7 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api import quotes, emails, settings as settings_api
+from app.api import quotes, emails, reviews, settings as settings_api
 from app.core.database import engine, Base
+from app import models  # noqa: F401
 
 # 创建数据库表
 Base.metadata.create_all(bind=engine)
@@ -24,6 +25,7 @@ app.add_middleware(
 # 注册路由
 app.include_router(quotes.router, prefix="/api/quotes", tags=["报价管理"])
 app.include_router(emails.router, prefix="/api/emails", tags=["邮件处理"])
+app.include_router(reviews.router, prefix="/api/reviews", tags=["审核反馈"])
 app.include_router(settings_api.router, prefix="/api/settings", tags=["系统设置"])
 
 

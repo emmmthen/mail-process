@@ -4,6 +4,7 @@ import QuoteList from './pages/QuoteList'
 import QuoteComparison from './pages/QuoteComparison'
 import EmailProcessing from './pages/EmailProcessing'
 import Settings from './pages/Settings'
+import ReviewQueue from './pages/ReviewQueue'
 
 function App() {
   return (
@@ -13,6 +14,7 @@ function App() {
         <Route path="comparison" element={<QuoteComparison />} />
         <Route path="comparison/:partNumber" element={<QuoteComparison />} />
         <Route path="email-processing" element={<EmailProcessing />} />
+        <Route path="reviews" element={<ReviewQueue />} />
         <Route path="settings" element={<Settings />} />
       </Route>
     </Routes>
