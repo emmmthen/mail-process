@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from typing import Iterable
 
 from bs4 import BeautifulSoup
 
@@ -29,27 +30,61 @@ class EmailCleaner:
 
     def _looks_like_html(self, content: str) -> bool:
         lowered = content.lower()
-        return "<html" in lowered or "<table" in lowered or "<body" in lowered
+        return "<html" in lowered or "<table" in lowered or "<body" in lowered or "</" in lowered
 
     def _clean_html(self, content: str) -> str:
         soup = BeautifulSoup(content, "html.parser")
-        for tag in soup(["script", "style"]):
+        for tag in soup(["script", "style", "noscript"]):
             tag.decompose()
+
+        for table in soup.find_all("table"):
+            for row in table.find_all("tr"):
+                row_text = row.get_text(" ", strip=True)
+                if self._is_signature_or_disclaimer(row_text):
+                    row.decompose()
+
+        for tag in soup.find_all(string=True):
+            parent_text = tag.parent.get_text(" ", strip=True) if getattr(tag, "parent", None) else str(tag)
+            if self._is_signature_or_disclaimer(parent_text):
+                tag.extract()
+
         return str(soup)
 
     def _clean_text(self, content: str) -> str:
         lines = []
+        skip_tail = False
         for raw_line in content.splitlines():
             line = raw_line.strip()
             if not line:
                 continue
-            if re.search(r"^--\s*$", line):
+            if self._is_quoted_header(line):
+                skip_tail = True
                 continue
-            if re.search(r"^best\s+regards", line, re.IGNORECASE):
+            if skip_tail:
                 continue
-            if re.search(r"^disclaimer", line, re.IGNORECASE):
+            if self._is_signature_or_disclaimer(line):
                 continue
             lines.append(line)
         cleaned = "\n".join(lines)
         cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
         return cleaned.strip()
+
+    def _is_signature_or_disclaimer(self, line: str) -> bool:
+        return bool(
+            re.search(r"^--\s*$", line)
+            or re.search(r"^best\s+regards", line, re.IGNORECASE)
+            or re.search(r"^kind\s+regards", line, re.IGNORECASE)
+            or re.search(r"^regards", line, re.IGNORECASE)
+            or re.search(r"^disclaimer", line, re.IGNORECASE)
+            or re.search(r"confidential", line, re.IGNORECASE)
+            or re.search(r"this\s+email\s+and\s+any\s+attachments", line, re.IGNORECASE)
+        )
+
+    def _is_quoted_header(self, line: str) -> bool:
+        return bool(
+            re.match(r"^>+", line)
+            or re.search(r"^from:\s", line, re.IGNORECASE)
+            or re.search(r"^sent:\s", line, re.IGNORECASE)
+            or re.search(r"^to:\s", line, re.IGNORECASE)
+            or re.search(r"^subject:\s", line, re.IGNORECASE)
+        )

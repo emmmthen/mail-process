@@ -18,7 +18,6 @@ const api = axios.create({
   },
 })
 
-// 报价相关 API
 export const getQuotes = async (params?: { part_number?: string; status?: string }): Promise<Quote[]> => {
   const response = await api.get('/quotes/', { params })
   return response.data
@@ -48,12 +47,11 @@ export const getPriceComparison = async (partNumber: string): Promise<QuoteCompa
   return response.data
 }
 
-// 邮件导入 API - 用于文件上传
 export const importEmail = async (file: File): Promise<EmailImportResponse> => {
   const formData = new FormData()
   formData.append('file', file)
   formData.append('process_type', 'auto')
-  
+
   const response = await api.post('/emails/import', formData, {
     headers: {
       'Content-Type': 'multipart/form-data',
@@ -67,7 +65,6 @@ export const importBatchEmails = async (folderPath: string): Promise<EmailImport
   return response.data
 }
 
-// 系统设置 API
 export const getExchangeRateSettings = async (): Promise<ExchangeRateSettings> => {
   const response = await api.get('/settings/exchange-rate')
   return response.data
@@ -83,7 +80,6 @@ export const getAllSettings = async () => {
   return response.data
 }
 
-// 审核反馈 API
 export const getPendingReviews = async (): Promise<ReviewPendingItem[]> => {
   const response = await api.get('/reviews/pending')
   return response.data
@@ -106,5 +102,10 @@ export const correctReview = async (extractionRunId: number, data: ReviewCorrect
 
 export const rejectReview = async (extractionRunId: number, data: ReviewRejectRequest) => {
   const response = await api.post(`/reviews/${extractionRunId}/reject`, data)
+  return response.data
+}
+
+export const deleteReview = async (extractionRunId: number) => {
+  const response = await api.delete(`/reviews/${extractionRunId}`)
   return response.data
 }

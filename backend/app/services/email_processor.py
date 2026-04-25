@@ -52,7 +52,7 @@ class EmailProcessor:
             )
 
             extracted_quotes = await self.extractor.extract(
-                content=cleaned_text,
+                content=rebuilt["rebuilt_text"],
                 source_path=email_path,
                 process_type=process_type,
             )

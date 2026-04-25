@@ -54,3 +54,12 @@ async def reject_review(extraction_run_id: int, request: ReviewRejectRequest, db
         return await service.reject_review(extraction_run_id, request)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
+
+
+@router.delete("/{extraction_run_id}")
+async def delete_review(extraction_run_id: int, db: Session = Depends(get_db)):
+    service = ReviewService(db)
+    try:
+        return await service.delete_review(extraction_run_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))

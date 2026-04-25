@@ -17,6 +17,13 @@ class Settings(BaseSettings):
     EMAIL_IMAP_SERVER: Optional[str] = None
     EMAIL_IMAP_PORT: int = 993
     
+    # LLM 配置（DeepSeek / OpenAI 兼容 API）
+    LLM_API_KEY: Optional[str] = None
+    LLM_BASE_URL: str = "https://api.deepseek.com/v1"
+    LLM_MODEL: str = "deepseek-chat"
+    LLM_TIMEOUT: int = 60
+    LLM_MAX_RETRIES: int = 3
+    
     # 汇率换算公式配置
     EXCHANGE_RATE: float = 7.2  # 美金转人民币的汇率
     ADDITIONAL_FEE: float = 0.0  # 附加费用

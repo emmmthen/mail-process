@@ -19,35 +19,57 @@ class EmailRebuilder:
             f"邮件来源: {source_name}",
             f"来源类型: {source_type}",
             "",
-            "正文内容:",
-            cleaned_text or "",
         ]
 
-        if cleaned_text and "<table" in cleaned_text.lower():
+        if cleaned_text and self._looks_like_html(cleaned_text):
             soup = BeautifulSoup(cleaned_text, "html.parser")
+            body_text = soup.get_text("\n", strip=True)
+            if body_text:
+                blocks.append(
+                    {
+                        "block_type": "body_text",
+                        "source_type": source_type,
+                        "source_name": source_name,
+                        "content": body_text,
+                    }
+                )
+                rebuilt_text_parts.extend(["正文内容:", body_text, ""])
+
             tables = soup.find_all("table")
             for index, table in enumerate(tables, start=1):
                 table_text = self._table_to_markdown(table)
+                if not table_text:
+                    continue
                 blocks.append(
                     {
-                        "block_type": "table",
+                        "block_type": "body_tables",
                         "table_index": index,
+                        "source_type": source_type,
                         "source_name": source_name,
                         "content": table_text,
                     }
                 )
-                rebuilt_text_parts.extend(
-                    [
-                        "",
-                        f"表格 {index}:",
-                        table_text,
-                    ]
+                rebuilt_text_parts.extend([f"表格 {index}:", table_text, ""])
+        else:
+            if cleaned_text:
+                blocks.append(
+                    {
+                        "block_type": "body_text",
+                        "source_type": source_type,
+                        "source_name": source_name,
+                        "content": cleaned_text,
+                    }
                 )
+                rebuilt_text_parts.extend(["正文内容:", cleaned_text, ""])
 
         return {
             "rebuilt_text": "\n".join(rebuilt_text_parts).strip(),
             "rebuilt_blocks_json": blocks,
         }
+
+    def _looks_like_html(self, content: str) -> bool:
+        lowered = content.lower()
+        return "<html" in lowered or "<table" in lowered or "<body" in lowered
 
     def _table_to_markdown(self, table) -> str:
         rows = []

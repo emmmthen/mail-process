@@ -5,7 +5,8 @@ from typing import Any, Optional
 
 from sqlalchemy.orm import Session
 
-from app.models.email_feedback import ExtractionRun, ReviewAction
+from app.models.email_feedback import EmailArtifact, EmailMessage, ExtractionRun, ReviewAction
+from app.models.quote import Quote
 from app.schemas.feedback import (
     ReviewApproveRequest,
     ReviewCorrectRequest,
@@ -18,8 +19,6 @@ from app.services.quote_service import QuoteService
 
 
 class ReviewService:
-    """抽取反馈与审核服务"""
-
     def __init__(self, db: Session):
         self.db = db
         self.quote_service = QuoteService(db)
@@ -32,23 +31,22 @@ class ReviewService:
             .limit(limit)
             .all()
         )
-
         items: list[ReviewPendingItem] = []
         for run in runs:
-            message = run.email_message
             payload = run.llm_output_json or {}
+            quote = (payload.get("quotes") or [{}])[0]
             items.append(
                 ReviewPendingItem(
                     extraction_run_id=run.id,
                     email_message_id=run.email_message_id,
-                    subject=message.subject if message else None,
-                    sender=message.sender if message else None,
+                    subject=run.email_message.subject if run.email_message else None,
+                    sender=run.email_message.sender if run.email_message else None,
                     confidence_score=run.confidence_score,
                     run_status=run.run_status,
                     created_at=run.created_at,
                     quote_status=payload.get("quote_status"),
-                    supplier_name=payload.get("supplier_name"),
-                    part_number=payload.get("part_number"),
+                    supplier_name=quote.get("supplier_name"),
+                    part_number=quote.get("part_number"),
                 )
             )
         return items
@@ -57,11 +55,9 @@ class ReviewService:
         run = self.db.query(ExtractionRun).filter(ExtractionRun.id == extraction_run_id).first()
         if not run:
             return None
-
-        email_artifact = run.email_artifact
         return ReviewDetailResponse(
             email_message=run.email_message,
-            email_artifact=email_artifact,
+            email_artifact=run.email_artifact,
             extraction_run=run,
             review_actions=list(run.review_actions),
         )
@@ -69,7 +65,7 @@ class ReviewService:
     async def approve_review(self, extraction_run_id: int, request: ReviewApproveRequest):
         run = self._get_run_or_raise(extraction_run_id)
         final_values = request.final_values or run.llm_output_json or {}
-        committed_quote = await self._maybe_commit_quote(final_values, run)
+        committed_quote = await self._commit_quote(run=run, final_values=final_values)
         return self._finalize_review(
             run=run,
             review_status="approved",
@@ -84,10 +80,10 @@ class ReviewService:
     async def correct_review(self, extraction_run_id: int, request: ReviewCorrectRequest):
         run = self._get_run_or_raise(extraction_run_id)
         final_values = request.final_values or {}
-        committed_quote = await self._maybe_commit_quote(final_values, run)
+        committed_quote = await self._commit_quote(run=run, final_values=final_values)
         return self._finalize_review(
             run=run,
-            review_status="corrected",
+            review_status="approved",
             review_reason=request.review_reason,
             reviewed_fields_json=request.reviewed_fields,
             final_values_json=final_values,
@@ -103,9 +99,30 @@ class ReviewService:
             review_status="rejected",
             review_reason=request.review_reason,
             reviewed_fields_json=request.reviewed_fields,
-            final_values_json=run.llm_output_json,
+            final_values_json=None,
             can_reuse_as_pattern=request.can_reuse_as_pattern,
             reviewer=request.reviewer,
+            committed_quote_id=None,
+        )
+
+    async def delete_review(self, extraction_run_id: int):
+        run = self._get_run_or_raise(extraction_run_id)
+        for action in list(run.review_actions):
+            self.db.delete(action)
+        self.db.delete(run)
+        self.db.commit()
+        return {"deleted": True, "extraction_run_id": extraction_run_id}
+
+    def restore_to_pending(self, extraction_run_id: int, reviewer: Optional[str] = None):
+        run = self._get_run_or_raise(extraction_run_id)
+        return self._finalize_review(
+            run=run,
+            review_status="pending_review",
+            review_reason="review_not_finalized",
+            reviewed_fields_json=None,
+            final_values_json=None,
+            can_reuse_as_pattern=False,
+            reviewer=reviewer,
             committed_quote_id=None,
         )
 
@@ -115,22 +132,15 @@ class ReviewService:
             raise ValueError(f"Extraction run {extraction_run_id} not found")
         return run
 
-    async def _maybe_commit_quote(self, final_values: dict[str, Any], run: ExtractionRun):
-        quote_status = final_values.get("quote_status") or (run.llm_output_json or {}).get("quote_status")
-        if quote_status == "no_quote":
-            return None
-
-        part_number = final_values.get("part_number")
-        unit_price = final_values.get("unit_price")
-        usd_price = final_values.get("usd_price", unit_price)
-        if not part_number or usd_price is None:
-            return None
-
+    async def _commit_quote(self, *, run: ExtractionRun, final_values: dict[str, Any]):
         quote_create = QuoteCreate(
-            part_number=part_number,
+            part_number=final_values.get("part_number"),
+            product_name=final_values.get("product_name"),
             supplier_name=final_values.get("supplier_name"),
-            usd_price=usd_price,
-            currency_symbol=final_values.get("currency_symbol") or final_values.get("currency"),
+            quantity=final_values.get("quantity"),
+            currency=final_values.get("currency") or final_values.get("currency_symbol"),
+            unit_price=final_values.get("unit_price") or final_values.get("usd_price"),
+            cny_price=final_values.get("cny_price"),
             lead_time=final_values.get("lead_time"),
             moq=final_values.get("moq"),
             remarks=final_values.get("remarks"),
