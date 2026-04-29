@@ -1,0 +1,17 @@
+{
+  "name": "mail-process",
+  "private": true,
+  "packageManager": "pnpm@10.33.2",
+  "scripts": {
+    "install": "pnpm run install:frontend && pnpm run install:backend",
+    "install:frontend": "pnpm --dir frontend install",
+    "install:backend": "sh -c 'cd backend && uv sync'",
+    "dev": "sh -c '(cd backend && uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000) & (cd frontend && pnpm dev --host 0.0.0.0) & wait'",
+    "dev:frontend": "pnpm --dir frontend dev --host 0.0.0.0",
+    "dev:backend": "sh -c 'cd backend && uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000'",
+    "build": "pnpm run build:frontend",
+    "build:frontend": "pnpm --dir frontend build",
+    "lint": "pnpm run lint:frontend",
+    "lint:frontend": "pnpm --dir frontend lint"
+  }
+}
